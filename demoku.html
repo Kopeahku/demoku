@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="id" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kas Warga - Iuran & Tabungan</title>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class', 
+        }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Gaya dasar untuk simulasi aplikasi mobile */
+        body {
+            background-color: #f7f9fc;
+        }
+        .app-container {
+            max-width: 420px; /* Lebar khas layar ponsel */
+            margin: 0 auto;
+            min-height: 100vh;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background-color: white;
+            padding-top: 1px;
+            /* PENTING untuk 3D HOVER di kartu saldo */
+            perspective: 1000px; 
+        }
+        /* Gaya Dark Mode untuk body dan container */
+        .dark .app-container {
+             background-color: #1f2937; /* Gray-800 */
+        }
+        .dark body {
+             background-color: #111827; /* Gray-900 */
+        }
+
+        /* --- Gaya Header yang Diperkecil, Membulat, dan Abstrak --- */
+        header {
+            padding: 12px 16px; 
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            clip-path: polygon(0 0, 100% 0, 100% 90%, 0% 100%);
+            position: relative;
+            isolation: isolate; 
+        }
+        
+        /* Definisi Keyframes untuk Animasi Judul - TETAP PERTAHANKAN INI UNTUK AWAL MUNCUL */
+        @keyframes fadeInScale {
+            0% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-10px);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.05) translateY(0);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* --- Animasi Kilauan/Dua Warna Berjalan --- */
+        @keyframes shimmerEffect {
+            0% {
+                background-position: -200% 0; /* Mulai dari kiri luar */
+            }
+            100% {
+                background-position: 200% 0; /* Bergerak ke kanan luar */
+            }
+        }
+
+        /* Gaya untuk Judul yang Dianimasikan */
+        #app-title-animated {
+            display: inline-block; /* Penting agar transform berfungsi */
+            animation: 
+                fadeInScale 1s ease-out forwards, /* Animasi awal muncul */
+                shimmerEffect 6s linear infinite 1.5s; /* ⭐ Durasi 6s (Lebih Lambat) ⭐ */
+            
+            /* Gaya untuk efek kilauan */
+            background: linear-gradient(
+                90deg, 
+                #ffffff 0%,        /* Warna dasar teks (putih) */
+                #ffeb3b 20%,        /* Warna kilauan (kuning terang) */
+                #ffffff 40%,        /* Kembali ke warna dasar teks */
+                #ffffff 100%        /* Memastikan warna dasar di akhir */
+            );
+            background-size: 200% 100%; /* Ukuran gradien 2x lebar teks untuk efek sapuan */
+            -webkit-background-clip: text; /* Klip latar belakang ke bentuk teks */
+            -webkit-text-fill-color: transparent; /* Membuat teks transparan agar latar belakang terlihat */
+            
+            color: white; /* Fallback untuk browser yang tidak mendukung -webkit-text-fill-color */
+        }
+        
+        /* Dark mode adjustment untuk shimmer (opsional, jika ingin warna kilauan berbeda) */
+        .dark #app-title-animated {
+            background: linear-gradient(
+                90deg, 
+                #e0e7ff 0%,        /* Warna dasar teks di dark mode (biru muda) */
+                #a78bfa 20%,        /* Warna kilauan (ungu) */
+                #e0e7ff 40%,        /* Kembali ke warna dasar teks */
+                #e0e7ff 100%        /* Memastikan warna dasar di akhir */
+            );
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* --- Gaya Navigasi Bawah Abstrak --- */
+        #bottom-nav {
+            clip-path: polygon(0 20%, 5% 0, 95% 0, 100% 20%, 100% 100%, 0% 100%);
+            position: relative;
+            isolation: isolate;
+        }
+
+        /* Gaya Item Navigasi Dasar */
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 5px 2px;
+            color: #6b7280; 
+            transition: color 0.2s;
+            position: relative;
+            z-index: 10;
+            font-size: 0.7rem;
+        }
+
+        /* Gaya Item Navigasi Aktif */
+        .active-nav {
+            color: #3b82f6; 
+            font-weight: 600;
+        }
+        
+        /* Efek Gradien Grid untuk Item Aktif */
+        .active-nav::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to right, #bfdbfe, #eff6ff);
+            opacity: 0.8;
+            border-radius: 4px;
+            z-index: -1;
+        }
+        
+        /* Dark Mode untuk Item Aktif */
+        .dark .active-nav::before {
+             background: linear-gradient(to right, #1e3a8a, #374151);
+             opacity: 0.5;
+        }
+        
+        main {
+            padding-bottom: 5rem;
+        }
+
+        /* --- Gaya Kartu Saldo Abstrak dengan 3D HOVER --- */
+        .card-abstract {
+            border-radius: 20px; 
+            clip-path: polygon(0 10%, 100% 0, 100% 90%, 0% 100%); 
+            position: relative;
+            isolation: isolate; 
+            transform-origin: center center; /* Memastikan rotasi 3D berasal dari tengah */
+        }
+        
+        /* KODE HOVER: Efek Tilt pada Hover */
+        #saldo-box:hover {
+            /* Menerapkan Scale, Rotasi 3D, dan dorongan Z-axis */
+            transform: scale(1.03) rotateX(2deg) rotateY(-2deg) translateZ(10px);
+            /* Bayangan yang lebih mencolok saat hover */
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.5); /* Bayangan Biru-Indigo */
+        }
+
+        .dark #saldo-box:hover {
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4); /* Bayangan Ungu-Indigo di Dark Mode */
+        }
+        
+        /* Efek Tilt untuk kartu Iuran dan Tabungan */
+        #saldo-iuran-box:hover, #saldo-tabungan-box:hover {
+             transform: scale(1.02) rotateX(1deg) rotateY(-1deg) translateZ(5px);
+        }
+
+        /* Pola Titik */
+        .pattern-dots {
+            background-image: radial-gradient(#fff 1px, transparent 1px);
+            background-size: 8px 8px;
+        }
+        .dark .pattern-dots {
+            background-image: radial-gradient(#9ca3af 1px, transparent 1px);
+        }
+
+        /* Pola Garis */
+        .pattern-lines {
+            background-image: linear-gradient(to right, #fff 1px, transparent 1px);
+            background-size: 8px 100%;
+        }
+        .dark .pattern-lines {
+            background-image: linear-gradient(to right, #9ca3af 1px, transparent 1px);
+        }
+
+        /* Pola Grid */
+        .pattern-grid {
+            background-image: 
+                linear-gradient(to right, #fff 1px, transparent 1px),
+                linear-gradient(to bottom, #fff 1px, transparent 1px);
+            background-size: 10px 10px;
+        }
+        .dark .pattern-grid {
+            background-image: 
+                linear-gradient(to right, #9ca3af 1px, transparent 1px),
+                linear-gradient(to bottom, #9ca3af 1px, transparent 1px);
+        }
+        
+        /* Gaya untuk item yang bisa diklik */
+        .warga-item-clickable:hover {
+            background-color: #f3f4f6; /* grey-100 */
+        }
+        .dark .warga-item-clickable:hover {
+            background-color: #374151; /* grey-700 */
+        }
+        
+        /* Gaya Hover Khusus untuk Menu Profil - PENTING! */
+        .menu-item {
+            transition: box-shadow 0.2s, background-color 0.2s;
+        }
+        .menu-item:hover {
+            /* Di mode siang, kita gunakan bayangan/border tipis agar teks tetap terbaca */
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); /* Ring biru lembut */
+        }
+        .dark .menu-item:hover {
+             /* Di mode gelap, kita gunakan perubahan latar belakang */
+            background-color: #374151; /* grey-700 */
+            box-shadow: none; /* Hilangkan ring di dark mode */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900">
+
+    <div class="app-container">
+        <header class="bg-gradient-to-br from-blue-700 via-indigo-700 to-purple-800 dark:from-blue-900 dark:via-indigo-900 dark:to-purple-950 text-white shadow-lg flex justify-between items-center sticky top-0 z-20 overflow-hidden">
+            <div class="absolute inset-0 pattern-dots opacity-30 dark:opacity-15"></div>
+            
+            <div class="relative z-10">
+                <h1 class="text-xl font-bold">
+                    <span id="app-title-animated">💰 Kas Warga RT 01</span>
+                </h1>
+                <p class="text-xs">Iuran & Tabungan</p> 
+            </div>
+            
+            <button id="dark-mode-toggle" class="p-2 rounded-full bg-blue-700 hover:bg-blue-800 transition duration-150 relative z-10">
+                <span id="sun-icon" class="hidden">☀️</span>
+                <span id="moon-icon">🌑</span>
+            </button>
+        </header>
+
+        <main class="p-4">
+            
+            <section id="page-beranda" class="tab-page">
+                
+                <div id="saldo-box" 
+                     class="p-6 mb-6 shadow-xl 
+                            bg-gradient-to-br from-purple-600 via-indigo-700 to-blue-800 
+                            text-white 
+                            /* KELAS HOVER UNTUK 3D TILT */
+                            transform transition duration-500 ease-in-out hover:scale-[1.03] hover:shadow-2xl hover:shadow-indigo-500/50 
+                            dark:from-purple-800 dark:via-indigo-900 dark:to-blue-950 dark:hover:shadow-purple-900/50
+                            relative overflow-hidden card-abstract">
+                    
+                    <div class="absolute inset-0 pattern-dots opacity-40 dark:opacity-20"></div> 
+                    <div class="absolute inset-0 bg-blend-overlay bg-gradient-to-br from-transparent to-black opacity-15"></div> 
+                    
+                    <div class="absolute top-4 right-4 text-5xl opacity-40">
+                        <span class="text-white">🔐</span> 
+                    </div>
+                    
+                    <p class="text-md font-light opacity-90 mb-1 relative z-10">Saldo Kas Total:</p>
+                    <p id="saldo-total" class="text-4xl font-extrabold tracking-tight relative z-10">Rp 0</p>
+                    <div class="mt-2 h-0.5 w-1/4 bg-white opacity-50 rounded-full relative z-10"></div>
+                    
+                    <div class="mt-4 pt-3 border-t border-white border-opacity-30 relative z-10 
+                                flex justify-between items-center text-sm"> 
+                        <p class="font-light opacity-80">Total Pengeluaran Kas Iuran:</p>
+                        <p id="pengeluaran-iuran-beranda" class="font-semibold text-red-300">Rp 0</p>
+                    </div>
+                    
+                    <div class="relative z-10 
+                                flex justify-between items-center text-sm"> 
+                        <p class="font-light opacity-80">Total Pengeluaran Umum:</p>
+                        <p id="pengeluaran-umum-beranda" class="font-semibold text-red-300">Rp 0</p>
+                    </div>
+
+                </div>
+
+                <section class="mb-6 p-4 border rounded-lg bg-white shadow-sm dark:bg-gray-700 dark:border-gray-600">
+                    <h2 class="text-lg font-semibold mb-3 text-red-700 dark:text-gray-200">Catat Transaksi (Non-Iuran/Tabungan Khusus)</h2>
+                    <form id="transaksi-form" class="space-y-3">
+                        <div>
+                            <label for="jenis" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Jenis Transaksi</label>
+                            <select id="jenis" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                                <option value="pemasukan">Pemasukan (Tabungan Umum)</option>
+                                <option value="pengeluaran">Pengeluaran Umum</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="jumlah" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Jumlah (Rp)</label>
+                            <input type="number" id="jumlah" required 
+                                   class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600" 
+                                   placeholder="Contoh: 50000">
+                        </div>
+                        <div>
+                            <label for="keterangan" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Keterangan</label>
+                            <input type="text" id="keterangan" required 
+                                   class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600" 
+                                   placeholder="Misalnya: Tabungan Bpk. Jono / Beli ATK">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 font-semibold transition duration-150 dark:bg-blue-600 dark:hover:bg-blue-700">
+                            Tambah Transaksi
+                        </button>
+                    </form>
+                </section>
+
+                <div class="mb-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
+                    <h3 class="font-semibold mb-2 dark:text-gray-100 text-gray-700">Filter Riwayat</h3>
+                    <div class="flex space-x-2 mb-3">
+                        <select id="filter-mode-beranda" class="w-1/3 p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                            <option value="all">Semua</option>
+                            <option value="day">Harian</option>
+                            <option value="month">Bulanan</option>
+                            <option value="year">Tahunan</option>
+                        </select>
+                        
+                        <input type="date" id="filter-date-beranda" class="w-2/3 p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                    </div>
+
+                    <input type="text" id="search-beranda" placeholder="Cari keterangan..."
+                           class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                </div>
+
+                <section>
+                    <h2 class="text-lg font-semibold mb-3 text-red-700 dark:text-red-300">Riwayat Transaksi Lengkap</h2>
+                    <ul id="riwayat-list-beranda" class="space-y-2">
+                        <li class="p-3 bg-gray-50 border-l-4 border-gray-300 rounded-md text-gray-500 text-sm italic dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">Belum ada transaksi.</li>
+                    </ul>
+                </section>
+            
+            </section>
+            
+            <section id="page-iuran" class="tab-page hidden">
+                
+                <div id="saldo-iuran-box" 
+                     class="p-6 mb-6 shadow-xl 
+                            bg-gradient-to-br from-green-600 via-teal-700 to-cyan-800 
+                            text-white 
+                            transform transition duration-300 ease-in-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-teal-500/50
+                            dark:from-green-800 dark:via-teal-900 dark:to-cyan-950 dark:hover:shadow-teal-900/50
+                            relative overflow-hidden card-abstract">
+
+                    <div class="absolute inset-0 pattern-lines opacity-40 dark:opacity-20"></div>
+                    <div class="absolute inset-0 bg-blend-overlay bg-gradient-to-br from-transparent to-black opacity-15"></div>
+
+                    <div class="absolute top-4 right-4 text-5xl opacity-40">
+                        <span class="text-white">💼</span> 
+                    </div>
+
+                    <div class="relative z-10">
+                        <div>
+                            <p class="text-md font-light opacity-90 mb-1">Total Saldo Iuran Warga:</p>
+                            <p id="saldo-iuran-total" class="text-4xl font-extrabold tracking-tight">Rp 0</p>
+                            <div class="mt-2 h-0.5 w-1/4 bg-white opacity-50 rounded-full"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 pt-3 border-t border-white border-opacity-30 relative z-10 flex flex-col items-start">
+                        <p class="text-sm font-light opacity-80">Total Pengeluaran dari Kas:</p>
+                        <p id="pengeluaran-iuran-total" class="text-xl font-bold text-red-300 mt-1">Rp 0</p> 
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t border-white border-opacity-30 relative z-10 flex justify-between">
+                        <button id="add-pengeluaran-iuran-btn" class="text-xs bg-red-400 hover:bg-red-500 text-white font-semibold py-1 px-3 rounded-full transition duration-150">
+                            + Catat Pengeluaran Kas
+                        </button>
+                    </div>
+
+                </div>
+
+                <section class="mb-6 p-4 border rounded-lg bg-green-50 shadow-sm dark:bg-gray-700 dark:border-gray-600">
+                    <h2 class="text-lg font-semibold mb-3 text-red-700 dark:text-gray-200">Catat Pembayaran Iuran</h2>
+                    <form id="iuran-form" class="space-y-3">
+                        <div>
+                            <label for="iuran-warga" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Warga (Kepala Keluarga)</label>
+                            <select id="iuran-warga" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                                <option value="">--- Pilih Warga ---</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="iuran-keterangan" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Iuran</label>
+                            <select id="iuran-keterangan" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                                <option value="Iuran Kas Bulanan">Iuran Kas Bulanan</option>
+                                <option value="Iuran Keamanan">Iuran Keamanan</option>
+                                <option value="Iuran Kebersihan">Iuran Kebersihan</option>
+                                <option value="Lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="iuran-jumlah" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Jumlah (Rp)</label>
+                            <input type="number" id="iuran-jumlah" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600" placeholder="Contoh: 50000">
+                        </div>
+                        <button type="submit" class="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 font-semibold transition duration-150 dark:bg-green-600 dark:hover:bg-green-700">
+                            Catat Iuran Masuk
+                        </button>
+                    </form>
+                </section>
+                
+                <section class="mb-6">
+                    <h2 class="text-lg font-semibold mb-3 text-red-700 dark:text-red-300">Warga Belum Bayar (Bulan Ini)</h2>
+                    <div id="warga-belum-bayar-list" class="space-y-2">
+                        <li class="p-3 bg-gray-50 border-l-4 border-gray-300 rounded-md text-gray-500 text-sm italic dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">Memuat data...</li>
+                    </div>
+                </section>
+
+
+                <div class="mb-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
+                    <h3 class="font-semibold mb-2 dark:text-gray-100 text-gray-700">Filter Riwayat Iuran</h3>
+                    <div class="flex space-x-2 mb-3">
+                        <select id="filter-mode-iuran" class="w-1/3 p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                            <option value="all">Semua</option>
+                            <option value="day">Harian</option>
+                            <option value="month">Bulanan</option>
+                            <option value="year">Tahunan</option>
+                        </select>
+                        
+                        <input type="date" id="filter-date-iuran" class="w-2/3 p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                    </div>
+
+                    <input type="text" id="search-iuran" placeholder="Cari keterangan/warga..."
+                           class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                </div>
+
+                <section>
+                    <h2 class="text-lg font-semibold mb-3 text-red-700 dark:text-red-300">Riwayat Transaksi Iuran</h2>
+                    <ul id="riwayat-list-iuran" class="space-y-2">
+                        <li class="p-3 bg-gray-50 border-l-4 border-gray-300 rounded-md text-gray-500 text-sm italic dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">Belum ada transaksi.</li>
+                    </ul>
+                </section>
+                
+            </section>
+            
+            <section id="page-tabungan" class="tab-page hidden">
+                
+                <div id="saldo-tabungan-box" 
+                     class="p-6 mb-6 shadow-xl 
+                            bg-gradient-to-br from-yellow-600 via-orange-700 to-red-800 
+                            text-white 
+                            transform transition duration-300 ease-in-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-orange-500/50
+                            dark:from-yellow-800 dark:via-orange-900 dark:to-red-950 dark:hover:shadow-orange-900/50
+                            relative overflow-hidden card-abstract">
+
+                    <div class="absolute inset-0 pattern-grid opacity-40 dark:opacity-20"></div>
+                    <div class="absolute inset-0 bg-blend-overlay bg-gradient-to-br from-transparent to-black opacity-15"></div>
+
+                    <div class="absolute top-4 right-4 text-5xl opacity-40">
+                        <span class="text-white">🐖</span> 
+                    </div>
+                    
+                    <p class="text-md font-light opacity-90 mb-1 relative z-10">Total Saldo Tabungan:</p>
+                    <p id="saldo-tabungan-total" class="text-4xl font-extrabold tracking-tight relative z-10">Rp 0</p>
+                    <div class="mt-2 h-0.5 w-1/4 bg-white opacity-50 rounded-full relative z-10"></div>
+                </div>
+
+                <section class="mb-6 p-4 border rounded-lg bg-yellow-50 shadow-sm dark:bg-gray-700 dark:border-gray-600">
+                    <h2 class="text-lg font-semibold mb-3 text-red-700 dark:text-gray-200">Catat Tabungan Warga</h2>
+                    <form id="tabungan-form" class="space-y-3">
+                        <div>
+                            <label for="tabungan-jenis" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Jenis Transaksi</label>
+                            <select id="tabungan-jenis" required class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                                <option value="menabung">Menabung (Pemasukan)</option>
+                                <option value="mengambil">Mengambil (Pengeluaran)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="tabungan-warga" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Warga (Kepala Keluarga)</label>
+                            <select id="tabungan-warga" required class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                                <option value="">--- Pilih Warga ---</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="tabungan-jumlah" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Jumlah (Rp)</label>
+                            <input type="number" id="tabungan-jumlah" required class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600" placeholder="Contoh: 100000">
+                        </div>
+                        <button type="submit" class="w-full bg-yellow-500 text-white py-2 rounded-md hover:bg-yellow-600 font-semibold transition duration-150 dark:bg-yellow-600 dark:hover:bg-yellow-700">
+                            Catat Transaksi Tabungan
+                        </button>
+                    </form>
+                </section>
+
+                <div class="mb-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
+                    <h3 class="font-semibold mb-2 dark:text-gray-100 text-gray-700">Filter Riwayat Tabungan</h3>
+                    <div class="flex space-x-2 mb-3">
+                        <select id="filter-mode-tabungan" class="w-1/3 p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                            <option value="all">Semua</option>
+                            <option value="day">Harian</option>
+                            <option value="month">Bulanan</option>
+                            <option value="year">Tahunan</option>
+                        </select>
+                        
+                        <input type="date" id="filter-date-tabungan" class="w-2/3 p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                    </div>
+
+                    <input type="text" id="search-tabungan" placeholder="Cari warga..."
+                           class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                </div>
+                
+                <section>
+                    <h2 class="text-lg font-semibold mb-3 text-red-700 dark:text-red-300">Riwayat Transaksi Tabungan</h2>
+                    <ul id="riwayat-list-tabungan" class="space-y-2">
+                        <li class="p-3 bg-gray-50 border-l-4 border-gray-300 rounded-md text-gray-500 text-sm italic dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">Belum ada transaksi.</li>
+                    </ul>
+                </section>
+                
+            </section>
+            
+            <section id="page-warga" class="tab-page hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-green-700 dark:text-green-400">Daftar Warga</h2>
+                    <button id="add-warga-btn" class="bg-blue-500 text-white text-sm py-2 px-4 rounded-full hover:bg-blue-600 font-semibold transition duration-150">
+                        + Warga Baru
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                     <input type="text" id="search-warga" placeholder="Cari nama atau alamat warga..."
+                           class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                </div>
+
+                <ul id="daftar-warga-list" class="space-y-3">
+                    <li class="p-3 bg-gray-50 border-l-4 border-gray-300 rounded-md text-gray-500 text-sm italic dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">Memuat data warga...</li>
+                </ul>
+            </section>
+            
+            <section id="page-profil" class="tab-page hidden">
+                <h2 class="text-xl font-bold text-green-700 dark:text-green-400 mb-4">⚙️ Profil & Pengaturan</h2>
+                
+                <div class="mb-6">
+                    <input type="text" id="search-profil" placeholder="Cari menu pengaturan..."
+                           class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">
+                </div>
+
+                <div id="profil-menu-list" class="space-y-3">
+                    <div class="menu-item p-4 bg-white shadow-sm rounded-lg dark:bg-gray-700 dark:hover:bg-gray-600 transition duration-150 cursor-pointer border-l-4 border-blue-400" data-keyword="data keamanan ekspor impor">
+                        <h3 class="font-semibold dark:text-gray-100 text-gray-700">Keamanan & Data</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Ekspor, impor, dan reset data.</p>
+                    </div>
+                    <div class="menu-item p-4 bg-white shadow-sm rounded-lg dark:bg-gray-700 dark:hover:bg-gray-600 transition duration-150 cursor-pointer border-l-4 border-green-400" data-keyword="penggunaan panduan">
+                        <h3 class="font-semibold dark:text-gray-100 text-gray-700">Cara Penggunaan</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Panduan singkat untuk bendahara.</p>
+                    </div>
+                    <div class="menu-item p-4 bg-white shadow-sm rounded-lg dark:bg-gray-700 dark:hover:bg-gray-600 transition duration-150 cursor-pointer border-l-4 border-purple-400" data-keyword="info versi teknologi">
+                        <h3 class="font-semibold dark:text-gray-100 text-gray-700">Tentang Aplikasi</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Informasi versi dan teknologi.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer id="bottom-nav" class="fixed bottom-0 left-0 right-0 
+                                      bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-2xl 
+                                      h-16 flex justify-around items-center app-container mx-auto">
+            
+            <div class="absolute inset-0 bg-blue-50 dark:bg-gray-900 opacity-70"></div>
+            
+            <a href="#" class="nav-item active-nav" data-page="beranda">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+                <span>Beranda</span>
+            </a>
+            <a href="#" class="nav-item" data-page="iuran">
+                <svg xmlns="http://www.w3d.org/2000/svg" class="w-6 h-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm12 8l-2 2h-4l-2-2V6h8v6z" clip-rule="evenodd"/></svg>
+                <span>Iuran</span>
+            </a>
+            <a href="#" class="nav-item" data-page="tabungan">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-4.5-8.5a.5.5 0 01.5-.5h7a.5.5 0 010 1h-7a.5.5 0 01-.5-.5z" clip-rule="evenodd"/></svg>
+                <span>Tabungan</span>
+            </a>
+            <a href="#" class="nav-item" data-page="warga">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 20 20" fill="currentColor"><path d="M7 10a2 2 0 11-4 0 2 2 0 014 0zM17 10a2 2 0 11-4 0 2 2 0 014 0zM4.5 17a.5.5 0 01.5-.5h10a.5.5 0 01.5.5v1a.5.5 0 01-.5.5H5a.5.5 0 01-.5-.5v-1zM6 10a4 4 0 108 0 4 4 0 00-8 0z"/></svg>
+                <span>Warga</span>
+            </a>
+            <a href="#" class="nav-item" data-page="profil">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-.07-.74-.17-1.1-.28A7 7 0 004 9.14a7 7 0 1011.75 4.93A7 7 0 0011.49 3.17zm.25.75c.37.1.72.22 1.05.37C14.77 5.56 16 7.42 16 9.5a6.5 6.5 0 11-13 0c0-1.84.97-3.52 2.53-4.57.32-.17.65-.33 1-.48l.05-.03c.3-.14.62-.27.94-.39l.06-.02z" clip-rule="evenodd"/></svg>
+                <span>Profil</span>
+            </a>
+        </div>
+        </footer>
+        
+        <div id="warga-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 transform transition-all duration-300">
+                <h2 id="warga-modal-title" class="text-2xl font-bold mb-4 text-blue-600 dark:text-blue-400">Tambah Warga Baru</h2>
+                <form id="warga-form" class="space-y-4">
+                    <input type="hidden" id="warga-id-to-edit">
+                    <div>
+                        <label for="warga-nama" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Lengkap (Kepala Keluarga)</label>
+                        <input type="text" id="warga-nama" required class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+                    </div>
+                    <div>
+                        <label for="warga-alamat" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Alamat (Blok & No. Rumah)</label>
+                        <input type="text" id="warga-alamat" required class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+                    </div>
+                    <div>
+                        <label for="warga-pekerjaan" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Pekerjaan</label>
+                        <input type="text" id="warga-pekerjaan" required class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+                    </div>
+                    <div>
+                        <label for="warga-whatsapp" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nomor WhatsApp</label>
+                        <input type="tel" id="warga-whatsapp" class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+                    </div>
+                    <div>
+                        <label for="warga-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email (Opsional)</label>
+                        <input type="email" id="warga-email" class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+                    </div>
+                    <div>
+                        <label for="warga-referral" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Kode Referral (Opsional)</label>
+                        <input type="text" id="warga-referral" class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+                    </div>
+                    <div>
+                        <label for="warga-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password (Sandi)</label>
+                        <input type="password" id="warga-password" required class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+                    </div>
+                    
+                    <div>
+                        <label for="warga-status" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status Warga (Hanya Edit)</label>
+                        <select id="warga-status" disabled class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+                            <option value="Aktif">Aktif</option>
+                            <option value="Non-aktif">Non-aktif</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" id="cancel-warga-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold transition duration-150 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500">Batal</button>
+                        <button type="submit" id="submit-warga-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold transition duration-150">Simpan Warga</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="pengeluaran-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 transform transition-all duration-300">
+                <h2 id="pengeluaran-modal-title" class="text-2xl font-bold mb-4 text-red-600 dark:text-red-400">Catat Pengeluaran Baru</h2>
+                <form id="pengeluaran-form" class="space-y-4">
+                    <input type="hidden" id="pengeluaran-id-to-edit">
+                    <div>
+                        <label for="pengeluaran-nama" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Pengeluaran</label>
+                        <select id="pengeluaran-nama" required class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+                            <option value="Perbaikan Sarana Umum">Perbaikan Sarana Umum</option>
+                            <option value="Pembelian Perlengkapan">Pembelian Perlengkapan (ATK, dll.)</option>
+                            <option value="Biaya Operasional">Biaya Operasional (Listrik/Air Pos Jaga)</option>
+                            <option value="Acara/Kegiatan">Acara/Kegiatan Warga</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="pengeluaran-deskripsi" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Deskripsi/Keterangan Detail</label>
+                        <input type="text" id="pengeluaran-deskripsi" required class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" placeholder="Misalnya: Beli cat untuk pos ronda">
+                    </div>
+                    <div>
+                        <label for="pengeluaran-jumlah" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Jumlah (Rp)</label>
+                        <input type="number" id="pengeluaran-jumlah" required class="mt-1 block w-full p-3 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" placeholder="Contoh: 150000">
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" id="cancel-pengeluaran-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold transition duration-150 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500">Batal</button>
+                        <button type="submit" id="submit-pengeluaran-btn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold transition duration-150">Simpan Pengeluaran</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div id="profil-detail-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 transform transition-all duration-300">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 id="profil-detail-title" class="text-xl font-bold dark:text-gray-100 text-gray-800">Detail</h2>
+                    <button id="close-profil-detail-btn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+                <div id="profil-detail-content" class="text-gray-700 dark:text-gray-300 space-y-3">
+                    <p>Memuat detail...</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+    <script src="app.js"></script>
+
+</body>
+</html>
