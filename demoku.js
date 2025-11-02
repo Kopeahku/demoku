@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inisialisasi data jika LocalStorage kosong
     if (!localStorage.getItem('warga')) {
         const defaultWarga = [
-            // ⭐ PERUBAHAN: Menambah/Mengambil FIELD BARU ⭐
+            // ⭐ FIELD BARU: whatsapp, email, referral, password
             { id: 1, nama: 'Bpk. Budi Santoso', alamat: 'Blok A No. 1', pekerjaan: 'Pegawai Swasta', status: 'Aktif', whatsapp: '0811xxxxxx', email: 'budi@mail.com', referral: 'BUDI123', password: 'password123' },
             { id: 2, nama: 'Ibu Rina Dewi', alamat: 'Blok B No. 5', pekerjaan: 'Wiraswasta', status: 'Aktif', whatsapp: '0812xxxxxx', email: 'rina@mail.com', referral: '', password: 'password123' },
             { id: 3, nama: 'Bpk. Ahmad Fauzi', alamat: 'Blok C No. 10', pekerjaan: 'Pensiunan', status: 'Aktif', whatsapp: '0813xxxxxx', email: 'ahmad@mail.com', referral: '', password: 'password123' }
@@ -68,11 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('transaksi-form').addEventListener('submit', handleGeneralTransaction);
     document.getElementById('iuran-form').addEventListener('submit', handleIuranTransaction);
     document.getElementById('tabungan-form').addEventListener('submit', handleTabunganTransaction);
-    document.getElementById('warga-form').addEventListener('submit', handleWargaForm);
+    document.getElementById('warga-form').addEventListener('submit', handleWargaForm); // ✅ SUBMISSION LISTENER
     document.getElementById('pengeluaran-form').addEventListener('submit', handlePengeluaranForm);
     
     // Tombol buka modal
-    document.getElementById('add-warga-btn').addEventListener('click', () => showWargaModal());
+    document.getElementById('add-warga-btn').addEventListener('click', () => showWargaModal()); // ✅ TAMBAH BARU LISTENER
     document.getElementById('add-pengeluaran-iuran-btn').addEventListener('click', () => showPengeluaranModal());
 
 
@@ -465,7 +465,7 @@ function renderDaftarWarga() {
         const item = document.createElement('li');
         item.className = `warga-item-clickable p-3 flex justify-between items-center bg-white shadow-sm rounded-md border-l-4 border-${statusColor}-500 dark:bg-gray-700 cursor-pointer transition duration-150`;
         item.dataset.id = warga.id;
-        // ⭐ PERUBAHAN: Memanggil showWargaDetail saat diklik
+        // ⭐ PENTING: Memanggil showWargaDetail saat diklik
         item.onclick = () => showWargaDetail(warga.id); 
         item.innerHTML = `
             <div>
@@ -488,7 +488,7 @@ function handleWargaForm(e) {
     const nama = document.getElementById('warga-nama').value;
     const alamat = document.getElementById('warga-alamat').value;
     const pekerjaan = document.getElementById('warga-pekerjaan').value;
-    // ⭐ PERUBAHAN: Mengambil FIELD BARU
+    // ⭐ PENGAMBILAN FIELD BARU
     const whatsapp = document.getElementById('warga-whatsapp').value;
     const email = document.getElementById('warga-email').value;
     const referral = document.getElementById('warga-referral').value;
@@ -788,7 +788,7 @@ function hideModal(id) {
  * Menampilkan modal untuk menambah/mengedit warga.
  */
 function showWargaModal(wargaId = null) {
-    const modalTitle = document.getElementById('warga-modal-title');
+    const modalTitle = document.getElementById('warga-modal-title'); // ✅ Menggunakan ID yang BENAR
     const form = document.getElementById('warga-form');
     form.reset(); 
     document.getElementById('warga-id-to-edit').value = '';
@@ -811,7 +811,7 @@ function showWargaModal(wargaId = null) {
             document.getElementById('warga-alamat').value = warga.alamat;
             document.getElementById('warga-pekerjaan').value = warga.pekerjaan;
             statusField.value = warga.status;
-            // ⭐ PENGISIAN FIELD BARU: Mengisi field baru
+            // PENGISIAN FIELD BARU: Mengisi field baru
             document.getElementById('warga-whatsapp').value = warga.whatsapp || '';
             document.getElementById('warga-email').value = warga.email || '';
             document.getElementById('warga-referral').value = warga.referral || '';
@@ -823,7 +823,7 @@ function showWargaModal(wargaId = null) {
         // Mode Tambah Baru
         modalTitle.textContent = 'Tambah Warga Baru';
         statusField.disabled = true;
-        // ⭐ PENGISIAN FIELD BARU: Atur placeholder default saat tambah baru
+        // PENGISIAN FIELD BARU: Atur placeholder default saat tambah baru
         passwordField.placeholder = 'Wajib diisi untuk warga baru';
     }
     
@@ -870,7 +870,7 @@ function showWargaDetail(wargaId) {
     // Tentukan warna status
     const statusColor = warga.status === 'Aktif' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400';
 
-    // ⭐ PERUBAHAN: Tambahkan field baru dan riwayat tabungan ke konten detail warga
+    // ⭐ Tambahkan field baru dan riwayat tabungan ke konten detail warga
     contentElement.innerHTML = `
         <div class="space-y-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-700">
             <p class="text-lg font-bold ${statusColor}">Status: ${warga.status}</p>
